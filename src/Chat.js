@@ -1,6 +1,9 @@
 import React from "react";
 import io from "socket.io-client";
-const SERVER_URL = process.env.SERVER_URL || 'localhost:5000'
+import moment from "moment";
+
+const SERVER_URL = process.env.REACT_APP_SERVER_UR || 'localhost:5000';
+console.log(SERVER_URL);
 
 class Chat extends React.Component {
   constructor(props) {
@@ -12,12 +15,16 @@ class Chat extends React.Component {
       messages: [],
       serverStatus: 'sphere red'
     };
-    const messageStore = {};
+    this.messageStore = {};
 
     const socket = io(SERVER_URL);
 
-    socket.on('RECEIVE_MESSAGE', (data) => {
-      addMessage(data);
+    socket.on('RECEIVE_MESSAGE', (message) => {
+      console.log('RECEIVE_MESSAGE', message);
+      addMessage(message);
+    });
+    socket.on('MISSED_MESSAGES', (messages) => {
+      addMessages(messages);
     });
     socket.on('disconnect', () => {
       this.setServerState(false);
@@ -26,17 +33,16 @@ class Chat extends React.Component {
       this.setServerState(true);
     });
 
-    const addMessage = data => {
-      console.log(data);
-      if (messageStore[stringifyMessage(data)]) {
-        // We've already been given this message
+    const addMessages = messages => {
+      messages = messages.filter(message => this.checkMessageExists(message));
+      this.setState({messages: [...messages, ...this.state.messages]});
+    };
+
+    const addMessage = message => {
+      if (!this.checkMessageExists(message)) {
         return;
       }
-      messageStore[stringifyMessage(data)] = true;
-      this.setState({messages: [...this.state.messages, data].sort((a, b) => {
-        return a.created > b.created
-      })});
-      console.log(this.state.messages);
+      this.setState({messages: [...this.state.messages, message]});
     };
 
     this.sendMessage = (ev) => {
@@ -47,6 +53,16 @@ class Chat extends React.Component {
       });
       this.setState({message: ''});
     };
+  }
+
+  checkMessageExists (message) {
+    const key = stringifyMessage(message);
+    if (this.messageStore[key]) {
+      // We've already been given this message
+      return;
+    }
+    this.messageStore[key] = true;
+    return true;
   }
 
   setServerState (serverState) {
@@ -70,7 +86,7 @@ class Chat extends React.Component {
                 <div className="messages">
                   {this.state.messages.map(message => {
                     return (
-                      <div>{new Date(message.created).getTime()} - {message.author}: {message.message}</div>
+                      <div>{moment(message.created).format('h:mm:ss')} - {message.author}: {message.message}</div>
                     )
                   })}
                 </div>

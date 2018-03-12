@@ -6,8 +6,12 @@ WORKDIR /chat-server
 RUN npm install
 
 ARG SERVER_URL
+ENV SERVER_URL=$SERVER_URL
+
 EXPOSE 3000
 
-RUN npm build
+RUN npm run build
 
-CMD npm start
+RUN npm install -g serve
+
+CMD npm run start:production
